@@ -29,7 +29,7 @@
             padding: 10px 15px;
             margin-top: 10px;
         }
-        .items-list {
+        .items-list, .available-items {
             margin-top: 20px;
         }
     </style>
@@ -63,13 +63,19 @@
         <button type="button" onclick="addItem()">Add Another Item</button>
         <button type="submit">Submit Sales Order</button>
     </form>
+    <div class="available-items">
+        <h2>Available Items</h2>
+        <ul id="availableItemsList"></ul>
+    </div>
     <div class="items-list">
         <h2>Items List</h2>
         <ul id="itemsList"></ul>
+        <p>Total Price: <span id="totalPrice">0</span></p>
     </div>
     <script>
         let items = [];
         let availableItems = [];
+        let totalPrice = 0;
 
         // Fetch available items on page load
         window.onload = function() {
@@ -78,9 +84,20 @@
                 .then(data => {
                     availableItems = data;
                     console.log('Available items:', availableItems);
+                    displayAvailableItems();
                 })
                 .catch(error => console.error('Error fetching items:', error));
         };
+
+        function displayAvailableItems() {
+            const availableItemsList = document.getElementById('availableItemsList');
+            availableItemsList.innerHTML = '';
+            availableItems.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = `Item: ${item.ItemName}, Code: ${item.ItemCode}, Price: ${item.ItemPrices[0].Price}`;
+                availableItemsList.appendChild(li);
+            });
+        }
 
         function validateBP() {
             const bpInput = document.getElementById('bpInput').value.trim().toLowerCase();
@@ -110,17 +127,25 @@
         }
 
         function addItem() {
-            const itemInput = document.getElementById('itemInput').value;
-            const quantityInput = document.getElementById('quantityInput').value;
+            const itemInput = document.getElementById('itemInput').value.trim().toLowerCase();
+            const quantityInput = parseFloat(document.getElementById('quantityInput').value);
+            const item = availableItems.find(item => item.ItemCode.toLowerCase() === itemInput || item.ItemName.toLowerCase() === itemInput);
             validateItem();
 
-            if (itemInput && quantityInput) {
-                items.push({ item: itemInput, quantity: quantityInput });
+            if (item && quantityInput) {
+                const totalItemPrice = item.ItemPrices[0].Price * quantityInput;
+                items.push({ item: itemInput, quantity: quantityInput, totalItemPrice });
                 const itemsList = document.getElementById('itemsList');
                 const li = document.createElement('li');
-                li.textContent = `Item: ${itemInput}, Quantity: ${quantityInput}`;
+                li.textContent = `Item: ${item.ItemName}, Quantity: ${quantityInput}, Total Price: ${totalItemPrice.toFixed(2)}`;
                 itemsList.appendChild(li);
+                updateTotalPrice();
             }
+        }
+
+        function updateTotalPrice() {
+            totalPrice = items.reduce((acc, curr) => acc + curr.totalItemPrice, 0);
+            document.getElementById('totalPrice').textContent = totalPrice.toFixed(2);
         }
 
         document.getElementById('bpInput').addEventListener('blur', validateBP);
