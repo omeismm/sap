@@ -132,9 +132,7 @@ def create_delivery():
         session_id = login_to_sap()
         headers = {'Cookie': f'B1SESSION={session_id}'}
 
-
         print(f"Input Sales Order: {doc_entry}")
-
 
         card_code = data.get('CardCode')
         # Fetch items and validate input
@@ -178,9 +176,133 @@ def create_delivery():
         delivery_response = requests.post(delivery_url, json=delivery_payload, headers=headers, verify=False)
         delivery_response.raise_for_status()
 
-        return jsonify({"message": "Delivery created successfully", "DocEntry": delivery_response.json().get('DocEntry')}), 201
+        return jsonify({"message": "Delivery created successfully" ,"DocEntry": delivery_response.json().get('DocEntry'),"CardCode": delivery_response.json().get('CardCode'), "DocumentLines": items_data}), 201
     except Exception as e:
         return jsonify({"message": str(e)}), 500
+
+@app.route('/create-invoice', methods=['POST'])
+def create_invoice():
+    try:
+        data = request.get_json()
+        doc_entry = str(data.get('DocEntry')).strip()  # Convert to string and then strip
+        items_data = data.get('DocumentLines')
+
+        session_id = login_to_sap()
+        headers = {'Cookie': f'B1SESSION={session_id}'}
+
+        print(f"Input Delivery: {doc_entry}")
+
+        card_code = data.get('CardCode')
+        # Fetch items and validate input
+        # items_url = f"{SAP_BASE_URL}/Items"
+        # items_response = requests.get(items_url, headers=headers, verify=False)
+        # items_response.raise_for_status()
+        # available_items = items_response.json().get('value')
+        #
+        # item_shopping_list = []
+        # for item_data in items_data:
+        #     item_input_code = item_data['item'].strip().lower()
+        #     quantity = item_data['quantity']
+        #     price = None
+        #     for item in available_items:
+        #         if item['ItemCode'].lower() == item_input_code or item['ItemName'].lower() == item_input_code:
+        #             for price_detail in item['ItemPrices']:
+        #                 if price_detail['PriceList'] == 1:
+        #                     price = price_detail['Price']
+        #                     break
+        #             item_code = item['ItemCode']
+        #             break
+        #
+        #     if price is not None:
+        #         item_shopping_list.append({
+        #             "ItemCode": item_code,
+        #             "Quantity": quantity,
+        #             "Price": str(price)
+        #         })
+        #     else:
+        #         return jsonify({"message": f"Price not found for item: {item_input_code}"}), 400
+
+        invoice_url = f"{SAP_BASE_URL}/Invoices"
+        invoice_payload = {
+            "CardCode": card_code,
+            "DocumentLines": items_data,
+            "BaseEntry": doc_entry,  # "BaseEntry": "1",
+            "BaseDocumentType": 15,
+        }
+        print(f"Invoice Payload: {invoice_payload}")
+        print(f"Invoice URL: {invoice_url}")
+        print(f"Headers: {headers}")
+        invoice_response = requests.post(invoice_url, json=invoice_payload, headers=headers, verify=False)
+        invoice_response.raise_for_status()
+
+        return jsonify({"message": "Invoice created successfully", "DocEntry": invoice_response.json().get('DocEntry'), "CardCode": invoice_response.json().get('CardCode'), "DocTotal": invoice_response.json().get('DocTotal')}), 201
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+@app.route('/create-payment', methods=['POST'])
+def create_payment():
+    try:
+        data = request.get_json()
+        doc_entry = str(data.get('DocEntry')).strip()  # Convert to string and then strip
+        doc_total = data.get('DocTotal')
+        session_id = login_to_sap()
+        headers = {'Cookie': f'B1SESSION={session_id}'}
+
+        print(f"Input Invoice: {doc_entry}")
+
+        card_code = data.get('CardCode')
+        # Fetch items and validate input
+        # items_url = f"{SAP_BASE_URL}/Items"
+        # items_response = requests.get(items_url, headers=headers, verify=False)
+        # items_response.raise_for_status()
+        # available_items = items_response.json().get('value')
+        #
+        # item_shopping_list = []
+        # for item_data in items_data:
+        #     item_input_code = item_data['item'].strip().lower()
+        #     quantity = item_data['quantity']
+        #     price = None
+        #     for item in available_items:
+        #         if item['ItemCode'].lower() == item_input_code or item['ItemName'].lower() == item_input_code:
+        #             for price_detail in item['ItemPrices']:
+        #                 if price_detail['PriceList'] == 1:
+        #                     price = price_detail['Price']
+        #                     break
+        #             item_code = item['ItemCode']
+        #             break
+        #
+        #     if price is not None:
+        #         item_shopping_list.append({
+        #             "ItemCode": item_code,
+        #             "Quantity": quantity,
+        #             "Price": str(price)
+        #         })
+        #     else:
+        #         return jsonify({"message": f"Price not found for item: {item_input_code}"}), 400
+
+        payment_url = f"{SAP_BASE_URL}/IncomingPayments"
+        payment_payload = {
+            "CardCode": card_code,
+            "CashAccount": "161000",#hardcoded
+            "CashSum": doc_total,
+            "PaymentInvoices":[
+                {
+                    "DocEntry": doc_entry,
+                    "SumApplied": doc_total
+                }
+            ],
+
+        }
+        print(f"Payment Payload: {payment_payload}")
+        print(f"Payment URL: {payment_url}")
+        print(f"Headers: {headers}")
+        payment_response = requests.post(payment_url, json=payment_payload, headers=headers, verify=False)
+        payment_response.raise_for_status()
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+
 
 
 if __name__ == '__main__':

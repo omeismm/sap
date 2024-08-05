@@ -56,6 +56,8 @@
         <div class="form-group">
             <label>
                 <input type="checkbox" id="autoCreateDelivery" name="autoCreateDelivery"> Auto Create Delivery
+                <input type="checkbox" id="autoCreateInvoice" name="autoCreateInvoice"> Auto Create Invoice
+                <input type="checkbox" id="autoCreatePay" name="autoCreatePay"> Auto Create Payment
             </label>
         </div>
         <button type="button" onclick="addItem()">Add Another Item</button>
@@ -72,28 +74,28 @@
         // Fetch available items on page load
         window.onload = function() {
             fetch('http://localhost:5000/items')
-            .then(response => response.json())
-            .then(data => {
-                availableItems = data;
-                console.log('Available items:', availableItems);
-            })
-            .catch(error => console.error('Error fetching items:', error));
+                .then(response => response.json())
+                .then(data => {
+                    availableItems = data;
+                    console.log('Available items:', availableItems);
+                })
+                .catch(error => console.error('Error fetching items:', error));
         };
 
         function validateBP() {
             const bpInput = document.getElementById('bpInput').value.trim().toLowerCase();
             fetch('http://localhost:5000/business-partners')
-            .then(response => response.json())
-            .then(data => {
-                const bp = data.find(bp => bp.CardName.toLowerCase() === bpInput || bp.CardCode.toLowerCase() === bpInput);
-                const bpValidation = document.getElementById('bpValidation');
-                if (bp) {
-                    bpValidation.textContent = '';
-                } else {
-                    bpValidation.textContent = 'Business Partner not found';
-                }
-            })
-            .catch(error => console.error('Error fetching business partners:', error));
+                .then(response => response.json())
+                .then(data => {
+                    const bp = data.find(bp => bp.CardName.toLowerCase() === bpInput || bp.CardCode.toLowerCase() === bpInput);
+                    const bpValidation = document.getElementById('bpValidation');
+                    if (bp) {
+                        bpValidation.textContent = '';
+                    } else {
+                        bpValidation.textContent = 'Business Partner not found';
+                    }
+                })
+                .catch(error => console.error('Error fetching business partners:', error));
         }
 
         function validateItem() {
@@ -128,7 +130,8 @@
             event.preventDefault();
             const bpInput = document.getElementById('bpInput').value.trim().toLowerCase();
             const autoCreateDelivery = document.getElementById('autoCreateDelivery').checked;
-
+            const autoCreateInvoice = document.getElementById('autoCreateInvoice').checked;
+            const autoCreatePay = document.getElementById('autoCreatePay').checked;
             const payload = {
                 bpInput: bpInput,
                 items: items
@@ -147,6 +150,7 @@
                 if (data.message === "Sales order created successfully") {
                     alert(`Sales Order Created! DocEntry: ${data.DocEntry}`);
 
+                    let deliveryData = {};
                     if (autoCreateDelivery) {
                         const deliveryPayload = {
                             CardCode: data.CardCode,
@@ -161,11 +165,57 @@
                             },
                             body: JSON.stringify(deliveryPayload)
                         });
-                        const deliveryData = await deliveryResponse.json();
+                        deliveryData = await deliveryResponse.json();
                         if (deliveryData.message === "Delivery created successfully") {
                             alert(`Delivery Created! DocEntry: ${deliveryData.DocEntry}`);
                         } else {
                             alert(`Error creating delivery: ${deliveryData.message}`);
+                        }
+                    }
+                    alert("deliveryData: " + JSON.stringify(deliveryData));
+                    let invoiceData = {};
+                    if (autoCreateInvoice) {
+                        const invoicePayload = {
+                            CardCode: deliveryData.CardCode,
+                            DocEntry: deliveryData.DocEntry,
+                            DocumentLines: deliveryData.DocumentLines
+                        };
+                        alert(JSON.stringify(invoicePayload));
+                        const invoiceResponse = await fetch('http://localhost:5000/create-invoice', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(invoicePayload)
+                        });
+                        invoiceData = await invoiceResponse.json();
+                        if (invoiceData.message === "Invoice created successfully") {
+                            alert(`Invoice Created! DocEntry: ${invoiceData.DocEntry}`);
+                        } else {
+                            alert(`Error creating invoice: ${invoiceData.message}`);
+                        }
+                    }
+                    alert("invoiceData: " + JSON.stringify(invoiceData));
+                    let payData = {};
+                    if (autoCreatePay) {
+                        const payPayload = {
+                            CardCode: invoiceData.CardCode,
+                            DocEntry: invoiceData.DocEntry,
+                            DocLines: invoiceData.DocLines
+                        };
+                        alert(JSON.stringify(payPayload));
+                        const payResponse = await fetch('http://localhost:5000/create-payment', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(payPayload)
+                        });
+                        payData = await payResponse.json();
+                        if (payData.message === "Payment created successfully") {
+                            alert(`Payment Created! DocEntry: ${payData.DocEntry}`);
+                        } else {
+                            alert(`Error creating payment: ${payData.message}`);
                         }
                     }
                 } else {
