@@ -3,6 +3,7 @@ from flask_cors import CORS
 import requests
 from item import Item
 import datetime
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -74,6 +75,9 @@ def create_purchase_order():
     session_id = login_to_sap()
     item_shopping_list_data = request.json.get('items')
 
+    item_shopping_list_data_str = json.dumps(item_shopping_list_data)
+    debug_variable = item_shopping_list_data_str.replace("'", "''")
+    print("json to input to purchases_order", debug_variable)
     # Fetch all items to match
     items_url = f"{BASE_URL}/Items"
     items_headers = {'Cookie': 'B1SESSION=' + session_id}
@@ -142,7 +146,11 @@ def create_purchase_order():
 def create_goods_receipt_po():
     session_id = login_to_sap()
     deliveries = request.json  # Directly assign since it's a list
-    print(deliveries)  # Useful for debugging
+
+    ds = json.dumps(deliveries)
+    debug_variable = ds.replace("'", "''")
+    print("json to input to goods_receipt_po", debug_variable)
+
 
     goods_receipt_url = f"{BASE_URL}/PurchaseDeliveryNotes"
     goods_receipt_headers = {'Cookie': 'B1SESSION=' + session_id}
@@ -158,7 +166,7 @@ def create_goods_receipt_po():
             "DocumentLines": document_lines,
             "BaseEntry": delivery['DocEntry'],
         }
-        print(goods_receipt_payload)
+
         response = requests.post(goods_receipt_url, json=goods_receipt_payload, headers=goods_receipt_headers, verify=False)
         goods_receipt_response.append(response.json())
 
@@ -170,16 +178,20 @@ def create_ap_invoice():
     session_id = login_to_sap()
     goods_receipts = request.json  # List of goods receipts, each with a DocEntry
 
+    ab = json.dumps(goods_receipts)
+    debug_variable = ab.replace("'", "''")
+
+    print("json to input to slash ap_invoice" , debug_variable)
     ap_invoice_url = f"{BASE_URL}/PurchaseInvoices"
     ap_invoice_headers = {'Cookie': 'B1SESSION=' + session_id}
     ap_invoice_response = []
 
     for receipt in goods_receipts:
-        print(receipt)  # Debugging: Check contents of each receipt
+
         if 'DocumentLines' in receipt and len(receipt['DocumentLines']) > 0:
             # Access DocEntry from the first line in DocumentLines
-            doc_entry = receipt['DocumentLines'][0].get('DocEntry')
-            if doc_entry:
+            base_entry = receipt['DocumentLines'][0].get('DocEntry')
+            if base_entry:
                 vendor = receipt['CardCode']
                 document_lines = [{"ItemCode": item['ItemCode'], "Quantity": item['Quantity']} for item in receipt['DocumentLines']]
 
@@ -187,7 +199,7 @@ def create_ap_invoice():
                     "CardCode": vendor,
                     "DocDate": datetime.datetime.now().strftime('%Y-%m-%d'),
                     "DocumentLines": document_lines,
-                    "BaseEntry": doc_entry  # Set BaseEntry to the DocEntry of the goods receipt
+                    "BaseEntry": base_entry
                 }
                 response = requests.post(ap_invoice_url, json=ap_invoice_payload, headers=ap_invoice_headers, verify=False)
                 ap_invoice_response.append(response.json())
@@ -204,21 +216,30 @@ def create_payment():
     session_id = login_to_sap()
     ap_invoices = request.json  # List of AP invoices, each with a DocEntry
 
+    ab = json.dumps(ap_invoices)
+    debug_variable = ab.replace("'", "''")
+    print("json to input to slashpayment " , debug_variable)
     payment_url = f"{BASE_URL}/VendorPayments"
     payment_headers = {'Cookie': 'B1SESSION=' + session_id}
     payment_response = []
 
     for invoice in ap_invoices:
-        print(invoice)  # Debugging: Check contents of each invoice
+
         if 'DocumentLines' in invoice and len(invoice['DocumentLines']) > 0:
             # Access DocEntry from the first line in DocumentLines
-            doc_entry = invoice['DocumentLines'][0].get('DocEntry')
-            if doc_entry:
+            base_entry = invoice['DocumentLines'][0].get('DocEntry')
+            doc_total = invoice['DocumentLines'][0].get('DocTotal')
+            print("doc_total", doc_total)
+            print("base_entry", base_entry)
+            if base_entry:
                 payment_payload = {
                     "CardCode": invoice['CardCode'],
+                    "CashAccount": "161000",
+                    "TransferSum": doc_total,  # Assuming DocTotal is the total amount to pay
                     "PaymentInvoices": [
                         {
-                            "DocEntry": doc_entry  # Use the DocEntry from the AP Invoice
+                            "SumApplied": doc_total,  # Assuming full amount is paid
+                            "BaseEntry": base_entry  # Use the DocEntry from the AP Invoice
                         }
                     ]
                 }

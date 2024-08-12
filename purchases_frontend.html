@@ -219,7 +219,8 @@ document.getElementById('purchaseForm').addEventListener('submit', async functio
             if (autoCreatePay) {
                 payData = invoiceData.map(invoice => ({
                     CardCode: invoice.CardCode,
-                    DocEntry: invoice.DocEntry
+                    DocEntry: invoice.DocEntry,
+                    DocumentLines: invoice.DocumentLines
                 }));
 
                 const payResponse = await fetch('http://localhost:5000/payment', {

@@ -135,34 +135,6 @@ def create_delivery():
         print(f"Input Sales Order: {doc_entry}")
 
         card_code = data.get('CardCode')
-        # Fetch items and validate input
-        # items_url = f"{SAP_BASE_URL}/Items"
-        # items_response = requests.get(items_url, headers=headers, verify=False)
-        # items_response.raise_for_status()
-        # available_items = items_response.json().get('value')
-        #
-        # item_shopping_list = []
-        # for item_data in items_data:
-        #     item_input_code = item_data['item'].strip().lower()
-        #     quantity = item_data['quantity']
-        #     price = None
-        #     for item in available_items:
-        #         if item['ItemCode'].lower() == item_input_code or item['ItemName'].lower() == item_input_code:
-        #             for price_detail in item['ItemPrices']:
-        #                 if price_detail['PriceList'] == 1:
-        #                     price = price_detail['Price']
-        #                     break
-        #             item_code = item['ItemCode']
-        #             break
-        #
-        #     if price is not None:
-        #         item_shopping_list.append({
-        #             "ItemCode": item_code,
-        #             "Quantity": quantity,
-        #             "Price": str(price)
-        #         })
-        #     else:
-        #         return jsonify({"message": f"Price not found for item: {item_input_code}"}), 400
 
         delivery_url = f"{SAP_BASE_URL}/DeliveryNotes"
         delivery_payload = {
@@ -193,34 +165,7 @@ def create_invoice():
         print(f"Input Delivery: {doc_entry}")
 
         card_code = data.get('CardCode')
-        # Fetch items and validate input
-        # items_url = f"{SAP_BASE_URL}/Items"
-        # items_response = requests.get(items_url, headers=headers, verify=False)
-        # items_response.raise_for_status()
-        # available_items = items_response.json().get('value')
-        #
-        # item_shopping_list = []
-        # for item_data in items_data:
-        #     item_input_code = item_data['item'].strip().lower()
-        #     quantity = item_data['quantity']
-        #     price = None
-        #     for item in available_items:
-        #         if item['ItemCode'].lower() == item_input_code or item['ItemName'].lower() == item_input_code:
-        #             for price_detail in item['ItemPrices']:
-        #                 if price_detail['PriceList'] == 1:
-        #                     price = price_detail['Price']
-        #                     break
-        #             item_code = item['ItemCode']
-        #             break
-        #
-        #     if price is not None:
-        #         item_shopping_list.append({
-        #             "ItemCode": item_code,
-        #             "Quantity": quantity,
-        #             "Price": str(price)
-        #         })
-        #     else:
-        #         return jsonify({"message": f"Price not found for item: {item_input_code}"}), 400
+
 
         invoice_url = f"{SAP_BASE_URL}/Invoices"
         invoice_payload = {
@@ -251,34 +196,7 @@ def create_payment():
         print(f"Input Invoice: {doc_entry}")
 
         card_code = data.get('CardCode')
-        # Fetch items and validate input
-        # items_url = f"{SAP_BASE_URL}/Items"
-        # items_response = requests.get(items_url, headers=headers, verify=False)
-        # items_response.raise_for_status()
-        # available_items = items_response.json().get('value')
-        #
-        # item_shopping_list = []
-        # for item_data in items_data:
-        #     item_input_code = item_data['item'].strip().lower()
-        #     quantity = item_data['quantity']
-        #     price = None
-        #     for item in available_items:
-        #         if item['ItemCode'].lower() == item_input_code or item['ItemName'].lower() == item_input_code:
-        #             for price_detail in item['ItemPrices']:
-        #                 if price_detail['PriceList'] == 1:
-        #                     price = price_detail['Price']
-        #                     break
-        #             item_code = item['ItemCode']
-        #             break
-        #
-        #     if price is not None:
-        #         item_shopping_list.append({
-        #             "ItemCode": item_code,
-        #             "Quantity": quantity,
-        #             "Price": str(price)
-        #         })
-        #     else:
-        #         return jsonify({"message": f"Price not found for item: {item_input_code}"}), 400
+
 
         payment_url = f"{SAP_BASE_URL}/IncomingPayments"
         payment_payload = {
