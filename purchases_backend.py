@@ -141,16 +141,16 @@ def create_purchase_order():
 @app.route('/goods_receipt_po', methods=['POST'])
 def create_goods_receipt_po():
     session_id = login_to_sap()
-    deliveries = request.json.get('deliveries')  # Expecting a list of delivery data
-    print(deliveries)
+    deliveries = request.json  # Directly assign since it's a list
+    print(deliveries)  # Useful for debugging
+
     goods_receipt_url = f"{BASE_URL}/PurchaseDeliveryNotes"
     goods_receipt_headers = {'Cookie': 'B1SESSION=' + session_id}
     goods_receipt_response = []
 
     for delivery in deliveries:
         vendor = delivery['CardCode']
-        document_lines = [{"ItemCode": item['ItemCode'], "Quantity": item['Quantity']} for item in
-                          delivery['DocumentLines']]
+        document_lines = [{"ItemCode": item['ItemCode'], "Quantity": item['Quantity']} for item in delivery['DocumentLines']]
 
         goods_receipt_payload = {
             "CardCode": vendor,
@@ -159,8 +159,7 @@ def create_goods_receipt_po():
             "BaseEntry": delivery['DocEntry'],
         }
         print(goods_receipt_payload)
-        response = requests.post(goods_receipt_url, json=goods_receipt_payload, headers=goods_receipt_headers,
-                                 verify=False)
+        response = requests.post(goods_receipt_url, json=goods_receipt_payload, headers=goods_receipt_headers, verify=False)
         goods_receipt_response.append(response.json())
 
     return jsonify(goods_receipt_response)
@@ -169,28 +168,31 @@ def create_goods_receipt_po():
 @app.route('/ap_invoice', methods=['POST'])
 def create_ap_invoice():
     session_id = login_to_sap()
-    vendor_items_map = request.json.get('vendor_items_map')
+    vendor_items_map = request.json  # Assuming request.json is a list of vendor items
     ap_invoice_url = f"{BASE_URL}/PurchaseInvoices"
     ap_invoice_headers = {'Cookie': 'B1SESSION=' + session_id}
     ap_invoice_response = []
 
-    for vendor, items in vendor_items_map.items():
-        document_lines = [{"ItemCode": item_code, "Quantity": quantity} for item_code, quantity in items.items()]
+    for vendor_data in vendor_items_map:
+        vendor = vendor_data['CardCode']
+        document_lines = [{"ItemCode": item['ItemCode'], "Quantity": item['Quantity']} for item in vendor_data['DocumentLines']]
 
         ap_invoice_payload = {
             "CardCode": vendor,
             "DocDate": datetime.datetime.now().strftime('%Y-%m-%d'),
-            "DocumentLines": document_lines
+            "DocumentLines": document_lines,
+            "BaseEntry": vendor_data['DocEntry'],
         }
         response = requests.post(ap_invoice_url, json=ap_invoice_payload, headers=ap_invoice_headers, verify=False)
         ap_invoice_response.append(response.json())
 
     return jsonify(ap_invoice_response)
 
+
 @app.route('/payment', methods=['POST'])
 def create_payment():
     session_id = login_to_sap()
-    successful_ap_invoices = request.json.get('ap_invoices')
+    successful_ap_invoices = request.json  # Assuming request.json is a list of successful AP invoices
     payment_url = f"{BASE_URL}/VendorPayments"
     payment_headers = {'Cookie': 'B1SESSION=' + session_id}
     payment_response = []

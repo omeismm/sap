@@ -131,126 +131,97 @@
     document.getElementById('itemInput').addEventListener('blur', validateItem);
 
     document.getElementById('purchaseForm').addEventListener('submit', async function(event) {
-        event.preventDefault();
+    event.preventDefault();
 
-        const autoCreateDelivery = document.getElementById('autoCreateDelivery').checked;
-        const autoCreateInvoice = document.getElementById('autoCreateInvoice').checked;
-        const autoCreatePay = document.getElementById('autoCreatePay').checked;
+    const autoCreateDelivery = document.getElementById('autoCreateDelivery').checked;
+    const autoCreateInvoice = document.getElementById('autoCreateInvoice').checked;
+    const autoCreatePay = document.getElementById('autoCreatePay').checked;
 
-        const payload = {
-            items: items
-        };
+    const payload = {
+        items: items
+    };
 
-        alert(JSON.stringify(payload));
+    try {
+        const response = await fetch('http://localhost:5000/purchase_order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
 
-        try {
-            const response = await fetch('http://localhost:5000/purchase_order', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
+        const data = await response.json();
+        alert(`Purchase order created with Doc number: ${data.DocEntry}`);
 
-            const data = await response.json();
-            alert(` purchase order created with response: ${JSON.stringify(data)}`);
-            if (Array.isArray(data) && data.length > 0) {
-                // Handle multiple responses
-                data.forEach((order) => {
-                    if (order.DocEntry) {
-                        alert(`Purchase Order Created! DocEntry: ${order.DocEntry}`);
-                    } else {
-                        alert(`Error creating purchase order: ${order.message}`);
-                    }
+        if (Array.isArray(data) && data.length > 0) {
+            let deliveryData = [];
+
+            if (autoCreateDelivery) {
+                deliveryData = data.map(order => ({
+                    CardCode: order.CardCode,
+                    DocEntry: order.DocEntry,
+                    DocumentLines: order.DocumentLines,
+                }));
+
+                const deliveryResponse = await fetch('http://localhost:5000/goods_receipt_po', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(deliveryData)
                 });
 
-                let deliveryData = {};
-                if (autoCreateDelivery) {
-                    // Assuming data is an array of purchase orders
-                    const deliveriesPayload = data.map(order => ({
-                        CardCode: order.CardCode,
-                        DocEntry: order.DocEntry,
-                        DocumentLines: order.DocumentLines,
-                        BaseEntry: order.DocEntry,
-                    }));
-                    alert(JSON.stringify(deliveriesPayload));
-
-                    const deliveryResponse = await fetch('http://localhost:5000/goods_receipt_po', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ deliveries: deliveriesPayload})
-                    });
-
-                    deliveryData = await deliveryResponse.json();
-                    if (Array.isArray(deliveryData)) {
-                        deliveryData.forEach(response => {
-                            if (response.message === "Delivery created successfully") {
-                                alert(`Delivery Created! DocEntry: ${response.DocEntry}`);
-                            } else {
-                                alert(`Error creating delivery: ${response.message}`);
-                            }
-                        });
-                    } else {
-                        alert(`Unexpected response format: ${JSON.stringify(deliveryData)}`);
-                    }
-                }
-
-
-                let invoiceData = {};
-                if (autoCreateInvoice) {
-                    const invoicePayload = {
-                        CardCode: deliveryData.CardCode,
-                        DocEntry: deliveryData.DocEntry,
-                        DocumentLines: deliveryData.DocumentLines
-                    };
-                    alert(JSON.stringify(invoicePayload));
-                    const invoiceResponse = await fetch('http://localhost:5000/create-invoice', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(invoicePayload)
-                    });
-                    invoiceData = await invoiceResponse.json();
-                    if (invoiceData.message === "Invoice created successfully") {
-                        alert(`Invoice Created! DocEntry: ${invoiceData.DocEntry}`);
-                    } else {
-                        alert(`Error creating invoice: ${invoiceData.message}`);
-                    }
-                }
-                alert("invoiceData: " + JSON.stringify(invoiceData));
-
-                let payData = {};
-                if (autoCreatePay) {
-                    const payPayload = {
-                        CardCode: invoiceData.CardCode,
-                        DocEntry: invoiceData.DocEntry,
-                        DocLines: invoiceData.DocLines
-                    };
-                    alert(JSON.stringify(payPayload));
-                    const payResponse = await fetch('http://localhost:5000/create-payment', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(payPayload)
-                    });
-                    payData = await payResponse.json();
-                    if (payData.message === "Payment created successfully") {
-                        alert(`Payment Created! DocEntry: ${payData.DocEntry}`);
-                    } else {
-                        alert(`Error creating payment: ${payData.message}`);
-                    }
-                }
-            } else {
-                alert('No purchase orders were created.');
+                const deliveryResult = await deliveryResponse.json();
+                alert(`Delivery created: ${JSON.stringify(deliveryResult)}`);
             }
-        } catch (error) {
-            console.error('Error creating sales order:', error);
+
+            let invoiceData = [];
+
+            if (autoCreateInvoice) {
+                invoiceData = deliveryData.map(delivery => ({
+                    CardCode: delivery.CardCode,
+                    DocumentLines: delivery.DocumentLines,
+                }));
+
+                const invoiceResponse = await fetch('http://localhost:5000/ap_invoice', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(invoiceData)
+                });
+
+                const invoiceResult = await invoiceResponse.json();
+                alert(`Invoice created: ${JSON.stringify(invoiceResult)}`);
+            }
+
+            let payData = [];
+
+            if (autoCreatePay) {
+                payData = invoiceData.map(invoice => ({
+                    CardCode: invoice.CardCode,
+                    DocEntry: invoice.DocEntry
+                }));
+
+                const payResponse = await fetch('http://localhost:5000/payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payData)
+                });
+
+                const payResult = await payResponse.json();
+                alert(`Payment created: ${JSON.stringify(payResult)}`);
+            }
+        } else {
+            alert('No purchase orders were created.');
         }
-    });
+    } catch (error) {
+        console.error('Error creating purchase order:', error);
+    }
+});
+
 </script>
 
 </body>
