@@ -168,23 +168,33 @@ def create_goods_receipt_po():
 @app.route('/ap_invoice', methods=['POST'])
 def create_ap_invoice():
     session_id = login_to_sap()
-    vendor_items_map = request.json  # Assuming request.json is a list of vendor items
+    goods_receipts = request.json  # List of goods receipts, each with a DocEntry
+
     ap_invoice_url = f"{BASE_URL}/PurchaseInvoices"
     ap_invoice_headers = {'Cookie': 'B1SESSION=' + session_id}
     ap_invoice_response = []
 
-    for vendor_data in vendor_items_map:
-        vendor = vendor_data['CardCode']
-        document_lines = [{"ItemCode": item['ItemCode'], "Quantity": item['Quantity']} for item in vendor_data['DocumentLines']]
+    for receipt in goods_receipts:
+        print(receipt)  # Debugging: Check contents of each receipt
+        if 'DocumentLines' in receipt and len(receipt['DocumentLines']) > 0:
+            # Access DocEntry from the first line in DocumentLines
+            doc_entry = receipt['DocumentLines'][0].get('DocEntry')
+            if doc_entry:
+                vendor = receipt['CardCode']
+                document_lines = [{"ItemCode": item['ItemCode'], "Quantity": item['Quantity']} for item in receipt['DocumentLines']]
 
-        ap_invoice_payload = {
-            "CardCode": vendor,
-            "DocDate": datetime.datetime.now().strftime('%Y-%m-%d'),
-            "DocumentLines": document_lines,
-            "BaseEntry": vendor_data['DocEntry'],
-        }
-        response = requests.post(ap_invoice_url, json=ap_invoice_payload, headers=ap_invoice_headers, verify=False)
-        ap_invoice_response.append(response.json())
+                ap_invoice_payload = {
+                    "CardCode": vendor,
+                    "DocDate": datetime.datetime.now().strftime('%Y-%m-%d'),
+                    "DocumentLines": document_lines,
+                    "BaseEntry": doc_entry  # Set BaseEntry to the DocEntry of the goods receipt
+                }
+                response = requests.post(ap_invoice_url, json=ap_invoice_payload, headers=ap_invoice_headers, verify=False)
+                ap_invoice_response.append(response.json())
+            else:
+                print(f"No DocEntry found in the first DocumentLine: {receipt['DocumentLines'][0]}")
+        else:
+            print(f"No DocumentLines or empty DocumentLines in receipt: {receipt}")
 
     return jsonify(ap_invoice_response)
 
@@ -192,22 +202,32 @@ def create_ap_invoice():
 @app.route('/payment', methods=['POST'])
 def create_payment():
     session_id = login_to_sap()
-    successful_ap_invoices = request.json  # Assuming request.json is a list of successful AP invoices
+    ap_invoices = request.json  # List of AP invoices, each with a DocEntry
+
     payment_url = f"{BASE_URL}/VendorPayments"
     payment_headers = {'Cookie': 'B1SESSION=' + session_id}
     payment_response = []
 
-    for ap_invoice in successful_ap_invoices:
-        payment_payload = {
-            "CardCode": ap_invoice['CardCode'],
-            "PaymentInvoices": [
-                {
-                    "DocEntry": ap_invoice['DocEntry']
+    for invoice in ap_invoices:
+        print(invoice)  # Debugging: Check contents of each invoice
+        if 'DocumentLines' in invoice and len(invoice['DocumentLines']) > 0:
+            # Access DocEntry from the first line in DocumentLines
+            doc_entry = invoice['DocumentLines'][0].get('DocEntry')
+            if doc_entry:
+                payment_payload = {
+                    "CardCode": invoice['CardCode'],
+                    "PaymentInvoices": [
+                        {
+                            "DocEntry": doc_entry  # Use the DocEntry from the AP Invoice
+                        }
+                    ]
                 }
-            ]
-        }
-        response = requests.post(payment_url, json=payment_payload, headers=payment_headers, verify=False)
-        payment_response.append(response.json())
+                response = requests.post(payment_url, json=payment_payload, headers=payment_headers, verify=False)
+                payment_response.append(response.json())
+            else:
+                print(f"No DocEntry found in the first DocumentLine: {invoice['DocumentLines'][0]}")
+        else:
+            print(f"No DocumentLines or empty DocumentLines in invoice: {invoice}")
 
     return jsonify(payment_response)
 

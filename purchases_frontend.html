@@ -130,7 +130,7 @@
 
     document.getElementById('itemInput').addEventListener('blur', validateItem);
 
-    document.getElementById('purchaseForm').addEventListener('submit', async function(event) {
+document.getElementById('purchaseForm').addEventListener('submit', async function(event) {
     event.preventDefault();
 
     const autoCreateDelivery = document.getElementById('autoCreateDelivery').checked;
@@ -151,9 +151,16 @@
         });
 
         const data = await response.json();
-        alert(`Purchase order created with Doc number: ${data.DocEntry}`);
 
         if (Array.isArray(data) && data.length > 0) {
+            data.forEach(order => {
+                if (order.DocEntry) {
+                    alert(`Purchase Order Created! DocEntry: ${order.DocEntry}`);
+                } else {
+                    alert(`Error creating purchase order: ${order.message}`);
+                }
+            });
+
             let deliveryData = [];
 
             if (autoCreateDelivery) {
@@ -172,7 +179,13 @@
                 });
 
                 const deliveryResult = await deliveryResponse.json();
-                alert(`Delivery created: ${JSON.stringify(deliveryResult)}`);
+                deliveryResult.forEach(delivery => {
+                    if (delivery.DocEntry) {
+                        alert(`Delivery Created! DocEntry: ${delivery.DocEntry}`);
+                    } else {
+                        alert(`Error creating delivery: ${delivery.message}`);
+                    }
+                });
             }
 
             let invoiceData = [];
@@ -192,7 +205,13 @@
                 });
 
                 const invoiceResult = await invoiceResponse.json();
-                alert(`Invoice created: ${JSON.stringify(invoiceResult)}`);
+                invoiceResult.forEach(invoice => {
+                    if (invoice.DocEntry) {
+                        alert(`Invoice Created! DocEntry: ${invoice.DocEntry}`);
+                    } else {
+                        alert(`Error creating invoice: ${invoice.message}`);
+                    }
+                });
             }
 
             let payData = [];
@@ -212,7 +231,13 @@
                 });
 
                 const payResult = await payResponse.json();
-                alert(`Payment created: ${JSON.stringify(payResult)}`);
+                payResult.forEach(payment => {
+                    if (payment.DocEntry) {
+                        alert(`Payment Created! DocEntry: ${payment.DocEntry}`);
+                    } else {
+                        alert(`Error creating payment: ${payment.message}`);
+                    }
+                });
             }
         } else {
             alert('No purchase orders were created.');
